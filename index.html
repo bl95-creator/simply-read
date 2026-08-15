@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simply Read</title>
+  <!-- SheetJS for Excel / CSV Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #212529;
+      --subtext: #6b7280;
+      --accent: #2563eb;
+      --border: #e5e7eb;
+      --input-bg: #ffffff;
+      --badge-bg: #e2e8f0;
+      --badge-text: #334155;
+      --badge-series-bg: #dbeafe;
+      --badge-series-text: #1e40af;
+      --badge-rating-bg: #fef3c7;
+      --badge-rating-text: #b45309;
+      --hugo-color: #d97706;
+      --sfm-color: #7c3aed;
+      --danger: #ef4444;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --subtext: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+      --input-bg: #0f172a;
+      --badge-bg: #334155;
+      --badge-text: #cbd5e1;
+      --badge-series-bg: #1e3a8a;
+      --badge-series-text: #93c5fd;
+      --badge-rating-bg: #78350f;
+      --badge-rating-text: #fde68a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 550px;
+      margin: 0 auto;
+      padding: 15px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    h1 { margin: 0; font-size: 1.5rem; }
+
+    .theme-toggle {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      background: var(--card);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .stat-num { font-weight: bold; font-size: 1.2rem; color: var(--accent); }
+    .stat-label { font-size: 0.75rem; color: var(--subtext); text-transform: uppercase; }
+
+    .card {
+      background: var(--card);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+    }
+
+    form { display: flex; flex-direction: column; gap: 8px; }
+    .row { display: flex; gap: 8px; }
+    .row > input[type="number"], .row > input[type="text"] { flex: 1; }
+
+    .checkbox-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 0.85rem;
+    }
+    .checkbox-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+    input[type="text"], input[type="number"], button {
+      padding: 8px 10px;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+
+    select {
+      padding: 6px 8px;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .genre-select {
+      flex: 0 0 130px;
+      max-width: 130px;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 5px;
+      border-radius: 6px;
+      padding: 10px;
+    }
+
+    .btn-secondary { background: #4b5563; color: white; padding: 6px 12px; font-size: 0.85rem; }
+    .btn-danger { background: var(--danger); color: white; width: 100%; margin-bottom: 15px; }
+
+    .search-bar { width: 100%; margin-bottom: 10px; }
+    .filter-group { display: flex; gap: 8px; margin-bottom: 10px; }
+
+    /* Series Group Header Styles */
+    .series-group {
+      margin-bottom: 20px;
+    }
+    .series-header {
+      font-size: 1rem;
+      font-weight: bold;
+      color: var(--accent);
+      margin: 15px 0 8px 2px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .book-card {
+      position: relative;
+      background: var(--card);
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .award-corner {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 4px;
+    }
+    .award-indicator {
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: white;
+    }
+    .award-hugo { background: var(--hugo-color); }
+    .award-sfm { background: var(--sfm-color); }
+
+    .book-header { padding-right: 65px; }
+    .book-info h3 { margin: 0 0 2px 0; font-size: 1.05rem; }
+    .book-info p { margin: 0; color: var(--subtext); font-size: 0.85rem; }
+
+    .badges { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .badge {
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .badge-series { background: var(--badge-series-bg); color: var(--badge-series-text); }
+    .badge-rating { background: var(--badge-rating-bg); color: var(--badge-rating-text); font-weight: bold; }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .actions select { padding: 4px 6px; font-size: 0.8rem; }
+    .btn-group-right { margin-left: auto; display: flex; gap: 5px; }
+    .edit-btn { background: #f59e0b; color: white; padding: 4px 8px; border: none; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+    .delete-btn { background: var(--danger); color: white; padding: 4px 8px; border: none; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+
+    .edit-card-form { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .edit-btn-row { display: flex; gap: 8px; margin-top: 5px; }
+    .btn-save { background: #10b981; color: white; }
+    .btn-cancel { background: #6b7280; color: white; }
+
+    details { margin-bottom: 10px; background: var(--card); padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+    summary { font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+    .import-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .import-note { font-size: 0.8rem; color: var(--subtext); margin: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <h1>📖 Simply Read</h1>
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" id="theme-toggle-btn">🌙 Dark Mode</button>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item"><span class="stat-num" id="stat-total">0</span><br><span class="stat-label">Total Books</span></div>
+    <div class="stat-item"><span class="stat-num" id="stat-read" style="color: #10b981;">0</span><br><span class="stat-label">Read</span></div>
+    <div class="stat-item"><span class="stat-num" id="stat-unread" style="color: var(--danger);">0</span><br><span class="stat-label">Unread</span></div>
+  </div>
+
+  <!-- ADD BOOK FORM -->
+  <div class="card">
+    <form id="book-form">
+      <input type="text" id="title" placeholder="Book Title" required>
+      <input type="text" id="author" placeholder="Author" required>
+      
+      <div class="row">
+        <input type="number" id="pages" placeholder="Page Count" min="1">
+        <select id="genre" class="genre-select"></select>
+      </div>
+
+      <div class="row">
+        <select id="type" onchange="toggleSeriesInput()" style="flex: 1;">
+          <option value="Standalone">Standalone</option>
+          <option value="Series">Series</option>
+        </select>
+        <select id="rating" style="flex: 1;">
+          <option value="0">Rating: None</option>
+          <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+          <option value="4">⭐⭐⭐⭐ (4/5)</option>
+          <option value="3">⭐⭐⭐ (3/5)</option>
+          <option value="2">⭐⭐ (2/5)</option>
+          <option value="1">⭐ (1/5)</option>
+        </select>
+      </div>
+
+      <div id="series-fields" class="row" style="display: none;">
+        <input type="text" id="series-name" placeholder="Series Name">
+        <input type="text" id="series-num" placeholder="Book #" style="max-width: 100px;">
+      </div>
+
+      <div class="checkbox-row">
+        <label><input type="checkbox" id="hugo"> 🏆 Hugo Winner</label>
+        <label><input type="checkbox" id="sfm"> 🚀 SF Masterworks</label>
+      </div>
+
+      <button type="submit">Add Book</button>
+    </form>
+  </div>
+
+  <button type="button" class="btn-danger" onclick="clearAllBooks()">🗑️ Clear Entire List</button>
+
+  <details>
+    <summary>📥 Import Books from Excel / CSV</summary>
+    <div class="import-box">
+      <p class="import-note">Upload an Excel (.xlsx, .xls) or CSV file with headers: <strong>Title, Author, Pages, Genre, Standalone or Series, Series #, Series Name, Rating, Status, Hugo, SF Masterworks</strong>.</p>
+      <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv">
+      <button type="button" class="btn-secondary" onclick="importExcel()">Import File</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>➕ Add / Import Custom Genres</summary>
+    <div class="import-box">
+      <input type="text" id="genre-import-input" placeholder="e.g., Cyberpunk, True Crime (comma separated)">
+      <button type="button" class="btn-secondary" onclick="importGenres()">Import Genres</button>
+    </div>
+  </details>
+
+  <input type="text" id="search" class="search-bar" placeholder="🔍 Search title, author, or series..." oninput="render()">
+
+  <div class="filter-group">
+    <select id="status-filter" onchange="render()" style="flex: 1;">
+      <option value="All">All Statuses</option>
+      <option value="To Read ❌">To Read ❌</option>
+      <option value="Completed ✔️">Completed ✔️</option>
+    </select>
+    <select id="genre-filter" class="genre-select" onchange="render()"></select>
+  </div>
+
+  <div id="book-list"></div>
+
+  <script>
+    let currentTheme = localStorage.getItem('tbr_theme') || 'light';
+    
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-toggle-btn').innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+      localStorage.setItem('tbr_theme', theme);
+    }
+
+    function toggleTheme() {
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+      applyTheme(currentTheme);
+    }
+    applyTheme(currentTheme);
+
+    const defaultGenres = [
+      "Fiction", "Non-Fiction", "Sci-Fi", "Science Fiction", "Fantasy", "Sci-Fi / Fantasy", 
+      "Thriller", "Mystery", "Historical Fiction", "Romance", "Horror", "Memoir / Biography"
+    ];
+
+    let customGenres = JSON.parse(localStorage.getItem('tbr_genres')) || defaultGenres;
+    let books = JSON.parse(localStorage.getItem('tbr_books_v2')) || [];
+    let editingBookId = null;
+
+    function populateGenreDropdowns() {
+      const genreSelect = document.getElementById('genre');
+      const genreFilterSelect = document.getElementById('genre-filter');
+      
+      genreSelect.innerHTML = '';
+      genreFilterSelect.innerHTML = '<option value="All">All Genres</option>';
+
+      customGenres.forEach(g => {
+        genreSelect.innerHTML += `<option value="${g}">${g}</option>`;
+        genreFilterSelect.innerHTML += `<option value="${g}">${g}</option>`;
+      });
+    }
+
+    function saveAndRender() {
+      localStorage.setItem('tbr_books_v2', JSON.stringify(books));
+      localStorage.setItem('tbr_genres', JSON.stringify(customGenres));
+      render();
+    }
+
+    /* EXCEL / CSV IMPORT FUNCTION */
+    function importExcel() {
+      const fileInput = document.getElementById('excel-file-input');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Please select an Excel or CSV file to import.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+          if (rows.length === 0) {
+            alert("The uploaded sheet is empty.");
+            return;
+          }
+
+          let addedCount = 0;
+          rows.forEach(row => {
+            const getVal = (keys) => {
+              for (let k of keys) {
+                const foundKey = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.toLowerCase());
+                if (foundKey && row[foundKey] !== undefined) return String(row[foundKey]).trim();
+              }
+              return '';
+            };
+
+            const title = getVal(['title', 'book title']);
+            const author = getVal(['author', 'book author']);
+
+            if (title && author) {
+              const genre = getVal(['genre']) || 'Fiction';
+              if (!customGenres.includes(genre)) customGenres.push(genre);
+
+              const typeVal = getVal(['standalone or series', 'type', 'series or standalone']);
+              const isSeries = typeVal.toLowerCase().includes('series');
+
+              const statusVal = getVal(['status']);
+              const isCompleted = statusVal.toLowerCase().includes('completed') || statusVal.toLowerCase().includes('read') || statusVal.includes('✔️');
+
+              const ratingVal = parseInt(getVal(['rating'])) || 0;
+
+              const newBook = {
+                id: Date.now() + Math.random(),
+                title: title.replace(/^"|"$/g, ''),
+                author: author.replace(/^"|"$/g, ''),
+                pages: getVal(['pages', 'page count', 'pagecount']) || 'N/A',
+                genre: genre,
+                type: isSeries ? 'Series' : 'Standalone',
+                seriesName: getVal(['series name', 'seriesname', 'series']).replace(/^"|"$/g, ''),
+                seriesNum: getVal(['series #', 'book #', 'series num', 'book number']),
+                rating: ratingVal,
+                status: isCompleted ? 'Completed ✔️' : 'To Read ❌',
+                hugo: getVal(['hugo']).toLowerCase() === 'true' || getVal(['hugo']) === '1' || getVal(['hugo']).toLowerCase() === 'yes',
+                sfm: getVal(['sf masterworks', 'sfm']).toLowerCase() === 'true' || getVal(['sfm']) === '1' || getVal(['sfm']).toLowerCase() === 'yes'
+              };
+
+              books.push(newBook);
+              addedCount++;
+            }
+          });
+
+          populateGenreDropdowns();
+          saveAndRender();
+          fileInput.value = '';
+          alert(`Successfully imported ${addedCount} books!`);
+
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing file. Please check file format.");
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* CUSTOM GENRE IMPORT FUNCTION */
+    function importGenres() {
+      const input = document.getElementById('genre-import-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const newGenres = val.split(',').map(g => g.trim()).filter(g => g.length > 0);
+      let added = 0;
+
+      newGenres.forEach(g => {
+        if (!customGenres.includes(g)) {
+          customGenres.push(g);
+          added++;
+        }
+      });
+
+      if (added > 0) {
+        populateGenreDropdowns();
+        saveAndRender();
+        input.value = '';
+        alert(`Added ${added} new genre(s)!`);
+      } else {
+        alert("Genre(s) already exist.");
+      }
+    }
+
+    document.getElementById('book-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const type = document.getElementById('type').value;
+      const ratingVal = parseInt(document.getElementById('rating').value) || 0;
+
+      const newBook = {
+        id: Date.now(),
+        title: document.getElementById('title').value.trim(),
+        author: document.getElementById('author').value.trim(),
+        pages: document.getElementById('pages').value || 'N/A',
+        genre: document.getElementById('genre').value,
+        type: type,
+        seriesName: type === 'Series' ? document.getElementById('series-name').value.trim() : '',
+        seriesNum: type === 'Series' ? document.getElementById('series-num').value.trim() : '',
+        rating: ratingVal,
+        status: 'To Read ❌',
+        hugo: document.getElementById('hugo').checked,
+        sfm: document.getElementById('sfm').checked
+      };
+
+      books.push(newBook);
+      document.getElementById('book-form').reset();
+      toggleSeriesInput();
+      saveAndRender();
+    });
+
+    function createBookCard(book) {
+      const card = document.createElement('div');
+      card.className = 'book-card';
+
+      const currentRating = parseInt(book.rating) || 0;
+
+      if (editingBookId === book.id) {
+        let genreOptionsHtml = customGenres.map(g => `<option value="${g}" ${book.genre === g ? 'selected' : ''}>${g}</option>`).join('');
+
+        card.innerHTML = `
+          <div class="edit-card-form">
+            <input type="text" id="edit-title-${book.id}" value="${book.title}" required>
+            <input type="text" id="edit-author-${book.id}" value="${book.author}" required>
+            <div class="row">
+              <input type="number" id="edit-pages-${book.id}" value="${book.pages !== 'N/A' ? book.pages : ''}" placeholder="Page Count">
+              <select id="edit-genre-${book.id}" class="genre-select">${genreOptionsHtml}</select>
+            </div>
+            <div class="row">
+              <select id="edit-rating-${book.id}">
+                <option value="0" ${currentRating === 0 ? 'selected' : ''}>Rating: None</option>
+                <option value="5" ${currentRating === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐ (5/5)</option>
+                <option value="4" ${currentRating === 4 ? 'selected' : ''}>⭐⭐⭐⭐ (4/5)</option>
+                <option value="3" ${currentRating === 3 ? 'selected' : ''}>⭐⭐⭐ (3/5)</option>
+                <option value="2" ${currentRating === 2 ? 'selected' : ''}>⭐⭐ (2/5)</option>
+                <option value="1" ${currentRating === 1 ? 'selected' : ''}>⭐ (1/5)</option>
+              </select>
+            </div>
+            <div class="edit-btn-row">
+              <button type="button" class="btn-save" onclick="saveEdit(${book.id})">Save</button>
+              <button type="button" class="btn-cancel" onclick="cancelEditing()">Cancel</button>
+            </div>
+          </div>
+        `;
+        return card;
+      }
+
+      let awardBadgesHtml = '';
+      if (book.hugo || book.sfm) {
+        awardBadgesHtml += `<div class="award-corner">`;
+        if (book.hugo) awardBadgesHtml += `<span class="award-indicator award-hugo">H</span>`;
+        if (book.sfm) awardBadgesHtml += `<span class="award-indicator award-sfm">SFM</span>`;
+        awardBadgesHtml += `</div>`;
+      }
+
+      let typeLabel = book.type === 'Series' ? (book.seriesName ? `${book.seriesName} (${book.seriesNum || ''})` : 'Series') : 'Standalone';
+      let ratingBadgeHtml = currentRating > 0 ? `<span class="badge badge-rating">${'⭐'.repeat(currentRating)}</span>` : '';
+
+      card.innerHTML = `
+        ${awardBadgesHtml}
+        <div class="book-header">
+          <div class="book-info">
+            <h3>${book.title}</h3>
+            <p>by ${book.author}</p>
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">${book.genre}</span>
+          <span class="badge ${book.type === 'Series' ? 'badge-series' : ''}">${typeLabel}</span>
+          <span class="badge">${book.pages} pgs</span>
+          ${ratingBadgeHtml}
+        </div>
+        <div class="actions">
+          <select onchange="updateStatus(${book.id}, this.value)">
+            <option value="To Read ❌" ${book.status === 'To Read ❌' ? 'selected' : ''}>To Read ❌</option>
+            <option value="Completed ✔️" ${book.status === 'Completed ✔️' ? 'selected' : ''}>Completed ✔️</option>
+          </select>
+          <select onchange="updateRating(${book.id}, this.value)">
+            <option value="0" ${currentRating === 0 ? 'selected' : ''}>★ Rating</option>
+            <option value="5" ${currentRating === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
+            <option value="4" ${currentRating === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
+            <option value="3" ${currentRating === 3 ? 'selected' : ''}>⭐⭐⭐</option>
+            <option value="2" ${currentRating === 2 ? 'selected' : ''}>⭐⭐</option>
+            <option value="1" ${currentRating === 1 ? 'selected' : ''}>⭐</option>
+          </select>
+          <div class="btn-group-right">
+            <button class="edit-btn" onclick="startEditing(${book.id})">✏️</button>
+            <button class="delete-btn" onclick="deleteBook(${book.id})">✕</button>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    function toggleSeriesInput() {
+      document.getElementById('series-fields').style.display = document.getElementById('type').value === 'Series' ? 'flex' : 'none';
+    }
+
+    function updateStatus(id, newStatus) {
+      books = books.map(b => b.id === id ? { ...b, status: newStatus } : b);
+      saveAndRender();
+    }
+
+    function updateRating(id, newRating) {
+      books = books.map(b => b.id === id ? { ...b, rating: parseInt(newRating) || 0 } : b);
+      saveAndRender();
+    }
+
+    function clearAllBooks() {
+      if (confirm('Are you sure you want to delete ALL books?')) {
+        books = [];
+        localStorage.removeItem('tbr_books_v2');
+        render();
+      }
+    }
+
+    function deleteBook(id) {
+      if (confirm('Delete this book?')) {
+        books = books.filter(b => b.id !== id);
+        saveAndRender();
+      }
+    }
+
+    function startEditing(id) { editingBookId = id; render(); }
+    function cancelEditing() { editingBookId = null; render(); }
+
+    function saveEdit(id) {
+      books = books.map(b => b.id === id ? {
+        ...b,
+        title: document.getElementById(`edit-title-${id}`).value.trim(),
+        author: document.getElementById(`edit-author-${id}`).value.trim(),
+        pages: document.getElementById(`edit-pages-${id}`).value || 'N/A',
+        genre: document.getElementById(`edit-genre-${id}`).value,
+        rating: parseInt(document.getElementById(`edit-rating-${id}`).value) || 0
+      } : b);
+      editingBookId = null;
+      saveAndRender();
+    }
+
+    function updateStats() {
+      const total = books.length;
+      const read = books.filter(b => b.status === 'Completed ✔️' || b.status === 'Finished' || b.status === 'Completed').length;
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-read').textContent = read;
+      document.getElementById('stat-unread').textContent = total - read;
+    }
+
+    function render() {
+      updateStats();
+      const list = document.getElementById('book-list');
+      list.innerHTML = '';
+
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const selectedGenre = document.getElementById('genre-filter').value;
+      const selectedStatus = document.getElementById('status-filter').value;
+
+      const filtered = books.filter(b => {
+        const matchesSearch = b.title.toLowerCase().includes(searchTerm) || 
+                              b.author.toLowerCase().includes(searchTerm) ||
+                              (b.seriesName && b.seriesName.toLowerCase().includes(searchTerm));
+        const matchesGenre = selectedGenre === 'All' || b.genre === selectedGenre;
+        const matchesStatus = selectedStatus === 'All' || b.status === selectedStatus;
+        return matchesSearch && matchesGenre && matchesStatus;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:var(--subtext);">No books found.</p>';
+        return;
+      }
+
+      // Group books by Series Name
+      const groups = {};
+      const standaloneKey = "Standalone / Uncategorized";
+
+      filtered.forEach(book => {
+        let key = (book.type === 'Series' && book.seriesName.trim() !== '') ? book.seriesName.trim() : standaloneKey;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(book);
+      });
+
+      // Render grouped series
+      Object.keys(groups).sort().forEach(groupName => {
+        // Sort books in series by series number if numeric
+        groups[groupName].sort((a, b) => {
+          let numA = parseFloat(a.seriesNum) || 0;
+          let numB = parseFloat(b.seriesNum) || 0;
+          return numA - numB;
+        });
+
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'series-group';
+
+        const header = document.createElement('div');
+        header.className = 'series-header';
+        header.innerHTML = groupName === standaloneKey ? `📚 ${groupName}` : `📚 Series: ${groupName}`;
+        groupContainer.appendChild(header);
+
+        groups[groupName].forEach(b => groupContainer.appendChild(createBookCard(b)));
+        list.appendChild(groupContainer);
+      });
+    }
+
+    populateGenreDropdowns();
+    render();
+  </script>
+</body>
+</html>
